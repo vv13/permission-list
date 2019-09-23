@@ -1,4 +1,4 @@
-import authPlugin from './authPlugin'
+import authPlugin from './index'
 
 const optionAuthCode = ['auth1', 'auth2']
 const optionAuthMap = new Map([['canFly', 'auth1']])
