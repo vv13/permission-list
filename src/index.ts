@@ -1,61 +1,51 @@
+import { isEmpty, isType } from './utils'
+
 export type CodeRaw = string | number
-export type Code = CodeRaw | CodeRaw[] | { [index: string]: boolean }
+export type Code = CodeRaw | CodeRaw[]
 export interface IOptions {
-  authCode?: CodeRaw[]
-  authMap?: { [index: string]: Code } | Map<string, Code>
+  permissionCode?: CodeRaw[]
+  permissionCodeMap?: { [index: string]: Code }
 }
 
-class AuthPlugin {
-  private static initAuthCode(authCode: any): Map<any, any> {
-    if (isType(authCode, 'Array')) {
-      return new Map(authCode.map((e: CodeRaw) => [e, e]))
-    } else if (isType(authCode, 'Map')) {
-      return authCode
-    }
-    return new Map()
-  }
-
-  private static initAuthMap(authMap: any): Map<string, Code> {
-    if (isType(authMap, 'Object')) {
-      return new Map(Object.entries(authMap))
-    } else if (isType(authMap, 'Map')) {
-      return authMap
-    }
-    return new Map()
-  }
-
-  public authCode: Map<CodeRaw, CodeRaw>
-  public authMap: Map<any, Code>
+class PermissionList {
+  public permissionCode: Map<CodeRaw, CodeRaw> = new Map()
+  public permissionCodeMap: Map<any, Code> = new Map()
 
   constructor(options: IOptions = {}) {
-    const { authCode, authMap } = options
-    this.authCode = AuthPlugin.initAuthCode(authCode)
-    this.authMap = AuthPlugin.initAuthMap(authMap)
+    const { permissionCode, permissionCodeMap } = options
+    this.initPermissionCode(permissionCode)
+    this.initPermissionCodeMap(permissionCodeMap)
   }
 
-  public verify(value: Code): boolean {
-    if (!value || ['{}', '[]'].includes(JSON.stringify(value))) return true
-    if (['string', 'number'].includes(typeof value)) {
-      return this.authMap.has(value)
-        ? this.verify(this.authMap.get(value) || '')
-        : this.authCode.has(value as CodeRaw)
-    } else if (Array.isArray(value)) {
-      return value.some((code: Code) => this.verify(code))
-    } else if (isType(value, 'Object')) {
-      return Object.entries(value).every(
-        ([code, condi]) => this.verify(code) === condi
-      )
+  public initPermissionCode(permissionCode?: CodeRaw[]) {
+    if (!permissionCode) return
+    if (!isType(permissionCode, 'Array'))
+      throw new Error('permissionCode should be an array')
+    this.permissionCode = new Map(permissionCode.map((e: CodeRaw) => [e, e]))
+  }
+
+  public initPermissionCodeMap(permissionCodeMap?: { [key: string]: Code }) {
+    if (!permissionCodeMap) return
+    if (!isType(permissionCodeMap, 'Object'))
+      throw new Error('permissionCodeMap should be an object')
+    this.permissionCodeMap = new Map(Object.entries(permissionCodeMap))
+  }
+
+  public check(codes?: Code): boolean {
+    if (!codes || isEmpty(codes)) return false
+    if (isType(codes, 'String') || isType(codes, 'Number')) {
+      return this.permissionCodeMap.has(codes)
+        ? this.check(this.permissionCodeMap.get(codes))
+        : this.permissionCode.has(codes as CodeRaw)
+    } else if (isType(codes, 'Array')) {
+      return (codes as CodeRaw[]).some((code: Code) => this.check(code))
     }
     return false
   }
 
-  public updateAuthCode(authCode: CodeRaw[]) {
-    this.authCode = AuthPlugin.initAuthCode(authCode)
+  public checkAll(codes: CodeRaw[]): boolean {
+    return (codes as CodeRaw[]).every((code: Code) => this.check(code))
   }
 }
 
-function isType(obj: any, type: string) {
-  return Object.prototype.toString.call(obj) === `[object ${type}]`
-}
-
-export default AuthPlugin
+export default PermissionList

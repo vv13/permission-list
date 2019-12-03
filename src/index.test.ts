@@ -1,63 +1,95 @@
-import authPlugin from './index'
+import PermissionList from './index'
 
-const optionAuthCode = ['auth1', 'auth2']
-const optionAuthMap = new Map([['canFly', 'auth1']])
+let optionAuthCode
+let optionAuthMap
 
-test('init', () => {
-  // init standard option type
-  const instance = new authPlugin({
-    authMap: optionAuthMap,
-    authCode: optionAuthCode,
-  })
-  expect(instance.authCode.get('auth1')).toBe('auth1')
-  expect(instance.authMap.get('canFly')).toBe('auth1')
-
-  // init by other option type
-  const instance2 = new authPlugin({
-    authMap: { canFly: 'auth1' },
-    authCode: ['auth1', 'auth2'],
-  })
-  expect(instance2.authCode.get('auth1')).toBe('auth1')
-  expect(instance2.authMap.get('canFly')).toBe('auth1')
-})
-test('verify number authCode param', () => {
-  const instance = new authPlugin({
-    authCode: [1, 2, 3],
-  })
-  expect(instance.verify(1)).toBeTruthy()
-  expect(instance.verify(2)).toBeTruthy()
-  expect(instance.verify('3')).toBeFalsy()
-  expect(instance.verify(3)).toBeTruthy()
-})
-test('verify string param', () => {
-  const instance = new authPlugin({
-    authMap: optionAuthMap,
-    authCode: optionAuthCode,
-  })
-  expect(instance.verify('auth1')).toBeTruthy()
-  expect(instance.verify('auth2')).toBeTruthy()
-  expect(instance.verify('auth3')).toBeFalsy()
-  expect(instance.verify('')).toBeTruthy()
+beforeEach(() => {
+  optionAuthCode = ['auth1', 'auth2', 100]
+  optionAuthMap = {
+    canFly: 'auth1',
+  }
 })
 
-test('verify array param', () => {
-  const instance = new authPlugin({
-    authMap: optionAuthMap,
-    authCode: optionAuthCode,
+describe('initial', () => {
+  it('create by standard option', () => {
+    const instance = new PermissionList({
+      permissionCodeMap: optionAuthMap,
+      permissionCode: optionAuthCode,
+    })
+    expect(instance.permissionCode.get('auth1')).toBe('auth1')
+    expect(instance.permissionCodeMap.get('canFly')).toBe('auth1')
   })
-  expect(instance.verify(['auth1', 'auth3'])).toBeTruthy()
-  expect(instance.verify(['auth3', 'auth4'])).toBeFalsy()
-  expect(instance.verify([])).toBeTruthy()
+  it('create with no data', () => {
+    const instance = new PermissionList()
+    instance.initPermissionCode(optionAuthCode);
+    instance.initPermissionCodeMap(optionAuthMap);
+    expect(instance.permissionCode.get('auth1')).toBe('auth1')
+    expect(instance.permissionCodeMap.get('canFly')).toBe('auth1')
+  })
 })
 
-test('verify object param', () => {
-  const instance = new authPlugin({
-    authMap: optionAuthMap,
-    authCode: optionAuthCode,
+describe('#check', () => {
+  it('should return true when check any of item', () => {
+    const instance = new PermissionList({
+      permissionCodeMap: optionAuthMap,
+      permissionCode: optionAuthCode,
+    })
+    expect(instance.check('auth1')).toBeTruthy()
+    expect(instance.check('auth2')).toBeTruthy()
+    expect(instance.check(100)).toBeTruthy()
   })
-  expect(instance.verify({})).toBeTruthy()
-  expect(instance.verify({ auth1: true, auth2: true })).toBeTruthy()
-  expect(instance.verify({ auth1: true, auth2: false })).toBeFalsy()
-  expect(instance.verify({ auth3: false, auth4: false })).toBeTruthy()
-  expect(instance.verify({ canFly: true, auth4: false })).toBeTruthy()
+  it('should return true when any array item to be included', () => {
+    const instance = new PermissionList({
+      permissionCodeMap: optionAuthMap,
+      permissionCode: optionAuthCode,
+    })
+    expect(instance.check(['auth1', 111])).toBeTruthy()
+    expect(instance.check(['auth2', 'auth1'])).toBeTruthy()
+    expect(instance.check([100, 102])).toBeTruthy()
+  })
+  it('should return false when item is empty or invalid value', () => {
+    const instance = new PermissionList({
+      permissionCodeMap: optionAuthMap,
+      permissionCode: optionAuthCode,
+    })
+    expect(instance.check()).toBeFalsy()
+    expect(instance.check(111)).toBeFalsy()
+    expect(instance.check([123, 'aaa'])).toBeFalsy()
+  })
+})
+
+
+describe('#checkAll', () => {
+  it ('should return true when all permission in permission-list', () => {
+    const instance = new PermissionList({
+      permissionCodeMap: optionAuthMap,
+      permissionCode: optionAuthCode,
+    })
+    expect(instance.checkAll([])).toBeTruthy()
+    expect(instance.checkAll(['auth1', 'auth2', 100])).toBeTruthy()
+  })
+  it ('should return false when any permission not in permission-list', () => {
+    const instance = new PermissionList({
+      permissionCodeMap: optionAuthMap,
+      permissionCode: optionAuthCode,
+    })
+    expect(instance.checkAll(['auth1', 'auth2', 100, 101])).toBeFalsy()
+  })
+})
+
+describe('#codeMap', () => {
+  it('should return true when check canFly in permission-list', () => {
+    const instance = new PermissionList({
+      permissionCodeMap: optionAuthMap,
+      permissionCode: optionAuthCode,
+    })
+    expect(instance.check(['canFly', '101'])).toBeTruthy()
+  })
+  it('should return true when checkAll canFly with check', () => {
+    const instance = new PermissionList({
+      permissionCodeMap: optionAuthMap,
+      permissionCode: optionAuthCode,
+    })
+    expect(instance.checkAll(['canFly', 100])).toBeTruthy()
+  })
 })
